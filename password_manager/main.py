@@ -2,21 +2,24 @@ import tkinter as tk
 from tkinter import messagebox
 import random
 import pyperclip
+import json
 
 WHITE_COLOR = "#ecfcff"
 FONT_NAME = "Courier"
 
-# ---------------------------------------- PASSWORD GENERATOR ------------------------------------------- #
+
+# ------------------------------------------- PASSWORD GENERATOR ---------------------------------------------- #
 
 
 def generate_password():
     """Function used to generate a random password with a combination of 8-10 letters, 2-4 symbols and 2-4 numbers with
-    a random order."""
+        a random order."""
     password = password_entry.get()
     if len(password) > 0:
         password_entry.delete(0, tk.END)
 
     else:
+
         letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
                    'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
                    'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
@@ -43,31 +46,72 @@ def generate_password():
 
         pyperclip.copy(password)
 
-# ---------------------------------------- SAVE PASSWORD ------------------------------------------- #
+
+# ------------------------------------------- SAVE PASSWORD ---------------------------------------------- #
 
 
 def save():
-    website = website_entry.get()
+    """Function used to save the information captured by the user as a JSON."""
+    website = website_entry.get().upper()
     email = email_username_entry.get()
     password = password_entry.get()
+    new_data = {
+        website: {
+            "email": email,
+            "password": password,
+        }
+    }
 
     if len(website) == 0 or len(email) == 0 or len(password) == 0:
-        not_ok = messagebox.showwarning(title="WARNING", message="Don't leave any field empty.")
+        messagebox.showwarning(title="WARNING", message="Don't leave any field empty.")
+    else:
+        try:
+            with open("data.json", mode="r") as password_list:
+                # Reading old data
+                data = json.load(fp=password_list)
+        except FileNotFoundError:
+            with open("data.json", mode="w") as password_list:
+                # Saving updated data
+                json.dump(obj=new_data, fp=password_list, indent=4)
+        else:
+            # Updating old data with new data
+            data.update(new_data)
+            with open("data.json", mode="w") as password_list:
+                # Saving updated data
+                json.dump(obj=data, fp=password_list, indent=4)
+        finally:
+            website_entry.delete(0, tk.END)
+            password_entry.delete(0, tk.END)
+
+
+# ------------------------------------------- FIND PASSWORD ---------------------------------------------- #
+
+
+def find_password():
+    """Function used to search inside the JSON file (by website) for the email address and password captured
+    by the user."""
+    website = website_entry.get()
+    website = website.upper()
+
+    if len(website) == 0:
+        messagebox.showwarning(title="WARNING", message="Capture the website's name you're searching information.")
 
     else:
-        is_ok = messagebox.askokcancel(title=f"Website: {website}",
-                                       message=f"These are the details entered: "
-                                               f"\nEmail: {email}\n"
-                                               f"Password: {password}\n"
-                                               f"Is it ok to save?")
+        try:
+            with open("data.json", mode="r") as password_list:
+                data = json.load(fp=password_list)
+        except FileNotFoundError:
+            messagebox.showerror(title="ERROR", message="No Data File Found.")
+        else:
+            if website in data:
+                email = data[website]["email"]
+                password = data[website]["password"]
+                messagebox.showinfo(title=website, message=f"Email: {email}\nPassword: {password}")
+            else:
+                messagebox.showerror(title=f"ERROR - {website}", message="No information found for this website.")
 
-        if is_ok:
-            with open("data.txt", mode="a") as password_list:
-                password_list.write(f"{website} | {email} | {password}")
-                website_entry.delete(0, tk.END)
-                password_entry.delete(0, tk.END)
 
-# ---------------------------------------- UI SETUP ------------------------------------------- #
+# ------------------------------------------- UI SETUP ---------------------------------------------- #
 
 
 window = tk.Tk()
@@ -93,8 +137,8 @@ password_label.config(text="Password:", bg=WHITE_COLOR, font=(FONT_NAME, 12))
 password_label.grid(column=0, row=3)
 
 # ENTRIES
-website_entry = tk.Entry(width=51)
-website_entry.grid(column=1, row=1, columnspan=2)
+website_entry = tk.Entry(width=32)
+website_entry.grid(column=1, row=1, columnspan=1)
 website_entry.focus()
 
 email_username_entry = tk.Entry(width=51)
@@ -106,6 +150,9 @@ password_entry = tk.Entry(width=32)
 password_entry.grid(column=1, row=3)
 
 # BUTTONS
+search_button = tk.Button(text="Search", width=15, command=find_password)
+search_button.grid(column=2, row=1)
+
 generate_password_button = tk.Button(text="Generate Password", command=generate_password)
 generate_password_button.grid(column=2, row=3)
 
